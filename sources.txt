@@ -1,0 +1,13 @@
+https://github.com/theartificialguy/NLP-with-Deep-Learning/blob/master/BERT/Multi-Class%20classification%20TF-BERT/multi_class.ipynb
+
+https://www.tensorflow.org/text/tutorials/classify_text_with_bert
+
+https://huggingface.co/bert-base-uncased?text=The+goal+of+life+is+%5BMASK%5D.
+
+https://huggingface.co/docs/tokenizers/api/tokenizer
+
+https://www.youtube.com/watch?v=urKDm9Bb8MM
+
+https://huggingface.co/docs/tokenizers/pipeline
+
+
