@@ -1,0 +1,23 @@
+{
+    "data": 
+    {
+        "author_id": "1379565504118067202", 
+        "created_at": "2022-11-09T18:49:34.000Z", 
+        "edit_history_tweet_ids": ["1590416323385118720"], 
+        "entities": {"mentions": 
+                    [{"start": 3, "end": 18, "username": "MariGe49975095", "id": "1389882659673939973"}, 
+                    {"start": 20, "end": 28, "username": "3Shvets", "id": "1458093757883158528"},
+                    {"start": 57, "end": 73, "username": "dimash_official", "id": "510948637"}]
+                }, 
+        "id": "1590416323385118720", 
+        "lang": "ru", 
+        "text": "RT @MariGe49975095: @3Shvets DIMASH THE STORY OF ONE SKY\n@dimash_official\nДимаш  - это талант, который может делать всё, что захочет и всё…"
+    }, 
+    "includes": 
+        {"users": [{"id": "1379565504118067202", "location": "Surby, Isle of Man", "name": "Retwitik", "username": "zloyptyts"}, 
+                    {"id": "1389882659673939973", "location": "Италия ", "name": "Mari Ge", "username": "MariGe49975095"}, 
+                    {"id": "1458093757883158528", "location": "Ukraine", "name": "Elena. 3. Shvets🇺🇦", "username": "3Shvets"}, 
+                    {"id": "510948637", "location": "Kazakhstan", "name": "Dimash Qud  aibergen", "username": "dimash_official"}
+                   ]
+        }
+}
