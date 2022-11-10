@@ -3,6 +3,7 @@ import tweepy
 import requests
 import pandas as pd
 import json
+import csv
 
 #Initialize Twitter Scraper
 
@@ -31,6 +32,8 @@ place_fields = [""]
 user_fields = ["location"]
 expansions = ["author_id"]
 
+csvWriter = csv.writer(open('11-10-2022_Tweets/tweets.csv', 'w'), delimiter=",")
+
 def getCountryCode(self, ip):
     endpoint = f'https://ipinfo.io/{ip}/json'
     response = requests.get(endpoint, verify = True)
@@ -43,36 +46,41 @@ def getCountryCode(self, ip):
     return data['country']
 
 df = pd.DataFrame(columns=["Time", "Tweet", "TweetID", "AuthorID", "Location"])
+csvWriter.writerow(["Time", "Tweet", "TweetID", "AuthorID", "Location"])
 
 
 class MyStream(tweepy.StreamingClient):
 
-    limit = 100
+    limit = 20000
+    nTweets = 0
     def on_connect(self):
         print("Connected!")
 
     def on_data(self, raw_data):
         data = json.loads(raw_data.decode())
-
-        if data["data"]["lang"] == 'en':
+        if (nTweets == limit):
+			print("Disconnecting")
+			self.disconnect()
+        
+        elif data["data"]["lang"] == 'en':
             #make sure that the location taken is from the tweeter
             assert(data["includes"]["users"][0]["id"] == data["data"]["author_id"])
             print(data["includes"]["users"][0])
     
     #Get only english tweets, and then 
-    def on_tweet(self, tweet):
+    # def on_tweet(self, tweet):
         #print(tweet.data)
         # print(api.get_user(tweet.author_id))
-        if(len(df.index) > self.limit):
-            print("Disconnected")
-            self.disconnect()
-        elif tweet.lang == "en": #and tweet.geo.country_code == "US":
+        # if(len(df.index) > self.limit):
+            # print("Disconnected")
+            # self.disconnect()
+        # elif tweet.lang == "en": #and tweet.geo.country_code == "US":
             # print(tweet.data)
-            twit = [tweet.created_at, tweet.text, tweet.id, tweet.author_id]
+            # twit = [tweet.created_at, tweet.text, tweet.id, tweet.author_id]
 
             #add new row to end of data base
-            df.loc[len(df.index)] = twit
-            print(len(df.index))
+            # df.loc[len(df.index)] = twit
+            # print(len(df.index))
 
 
     
@@ -80,7 +88,7 @@ class MyStream(tweepy.StreamingClient):
 stream = MyStream(bearer_token)
 stream.sample(tweet_fields=tweet_fields,place_fields=place_fields, user_fields=user_fields, expansions=expansions)
 
-df.info()
+#df.info()
 
 #Due to difficulty of randomly sampling tweets from certain dates, using Tweet ID, streaming random Tweets to get current sentiment
 
