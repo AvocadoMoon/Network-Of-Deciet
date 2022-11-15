@@ -46,7 +46,7 @@ if (os.path.exists(path)):
 
 class MyStream(tweepy.StreamingClient):
 
-    limit = 15000
+    limit = 50000
     nTweets = 0
     def on_connect(self):
         print("Connected!")
@@ -56,8 +56,8 @@ class MyStream(tweepy.StreamingClient):
     def on_data(self, raw_data):
         data = json.loads(raw_data.decode())
         is_retweet = False if "referenced_tweets" not in data["data"] else data["data"]["referenced_tweets"][0]["type"] == "retweeted"
-        is_english = data["data"]["lang"] == 'en'
-        has_location = "location" in data["includes"]["users"][0]
+        is_english = False if "lang" not in data["data"] else data["data"]["lang"] == 'en'
+        has_location = False if "includes" not in data else "location" in data["includes"]["users"][0]
         
         if (self.nTweets == self.limit):
             print("Disconnecting")
@@ -68,8 +68,12 @@ class MyStream(tweepy.StreamingClient):
             #print(data)
             assert(data["includes"]["users"][0]["id"] == data["data"]["author_id"])
             row = [data["data"]["created_at"], data["data"]["text"], data["data"]["id"], data["data"]["author_id"], data["includes"]["users"][0]["username"], data["includes"]["users"][0]["location"]]
-            csvWriter.writerow(row)
-            self.nTweets += 1
+            try:
+                csvWriter.writerow(row)
+                self.nTweets += 1
+                print(f"Number of tweets recorded is {self.nTweets}")
+            except:
+                print("Could not add this row")
 
 
 ###################################
