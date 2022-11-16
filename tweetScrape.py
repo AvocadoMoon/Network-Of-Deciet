@@ -7,6 +7,14 @@ import csv
 import os
 from datetime import date
 
+##########
+## Plan ##
+##########
+#1). Collect streamed unique tweets.
+#2). After collection, determine which streamed tweets are stereotypes / hate speech
+#3). The tweets that are stereos, get their number of retweets and do impact analysis on them
+
+
 ###############################
 ## Get Keys and authenticate ##
 ###############################
@@ -48,6 +56,7 @@ class MyStream(tweepy.StreamingClient):
 
     limit = 50000
     nTweets = 0
+    nRetweets = 30000
     def on_connect(self):
         print("Connected!")
 	
@@ -74,6 +83,7 @@ class MyStream(tweepy.StreamingClient):
                 print(f"Number of tweets recorded is {self.nTweets}")
             except:
                 print("Could not add this row")
+            
 
 
 ###################################
