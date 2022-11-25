@@ -55,7 +55,7 @@ if (os.path.exists(path)):
 class MyStream(tweepy.StreamingClient):
 
     limit = 50000
-    nTweets = 0
+    nTweets = 1948
     nRetweets = 30000
     def on_connect(self):
         print("Connected!")

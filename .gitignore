@@ -2,3 +2,6 @@
 dataScience/
 .vscode/
 config.ini
+bert-base-uncased/
+tweets/
+ScrapedTweets/
