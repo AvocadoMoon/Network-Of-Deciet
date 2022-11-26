@@ -3,14 +3,195 @@ import pandas as pd
 import numpy as np
 import os
 import torch
-import tensorflow as tf
+from torch import nn
 from transformers import BertTokenizer, BertModel
+from torch.optim import Adam
+from tqdm import tqdm
 
+#responsible for accessing and processing single instances of data
+class Dataset(torch.utils.data.Dataset):
+
+    def __init__(self, df, labels, tokenizer):
+
+        #each label that is within the data frame is converted to its numeric representation, and the index within this
+        #list corresponds to the index within the self.texts list
+        self.labels = [labels[label] for label in df['label']]
+
+        #tokenize all text that is given, and store it within a singular list
+        self.texts = [tokenizer(text, 
+                               padding='max_length', max_length = 512, truncation=True,
+                                return_tensors="pt") for text in df['text']]
+
+    def classes(self):
+        return self.labels
+
+    def __len__(self):
+        return len(self.labels)
+
+    def get_batch_labels(self, idx):
+        # Fetch a batch of labels
+        return np.array(self.labels[idx])
+
+    def get_batch_texts(self, idx):
+        # Fetch a batch of inputs
+        return self.texts[idx]
+
+    def __getitem__(self, idx):
+
+        batch_texts = self.get_batch_texts(idx)
+        batch_y = self.get_batch_labels(idx)
+
+        return batch_texts, batch_y
+
+class BertClassifier(nn.Module):
+
+    def __init__(self, dropout=0.5):
+
+        super(BertClassifier, self).__init__()
+
+        #bert model
+        self.bert = BertModel.from_pretrained('/home/zek/School/Information Ecosystem Threats/Network-Of-Deciet/bert-base-uncased')
+
+        #dropout probability set
+        self.dropout = nn.Dropout(dropout)
+
+        #input of neural network is a 768 dimensional vector and output is two dimensions, in accordiance to number of labels
+        self.linear = nn.Linear(768, 2)
+
+        #the nerual network activation function (ReLU curve)
+        self.relu = nn.ReLU()
+
+    def forward(self, input_id, mask):
+        #get the response from the bert model, first variable is embedding vectors for tokens in sentence,
+        #second is for embedding vector of the [CLS] token which is sentence-level classification and what matters for this classifier
+        sentence_vectors, pooled_output = self.bert(input_ids= input_id, attention_mask=mask,return_dict=False)
+
+        #first take the input and run it through the dropout function
+        dropout_output = self.dropout(pooled_output)
+
+        #run the returned output through the single layer neural network
+        linear_output = self.linear(dropout_output)
+
+        #take the output and run it through the activation function
+        final_layer = self.relu(linear_output)
+
+        return final_layer
+
+class TrainAndEvaluate():
+    def __init__(self, model, train_data, test_data, val_data, learning_rate=1e-6, epochs=5, batch_size=2):
+        self.model = model
+        self.train_data = train_data
+        self.val_data = val_data
+        self.learning_rate = learning_rate
+        self.epochs = epochs
+        self.test_data = test_data
+        self.batch_size = batch_size
+
+
+    def train(self):
+
+        #collects data in batches, and returns them for consumption in the training loop
+        train_dataloader = torch.utils.data.DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
+        val_dataloader = torch.utils.data.DataLoader(self.val_data, batch_size=self.batch_size)
+
+        #check if cuda cores are available to utilize
+        use_cuda = torch.cuda.is_available()
+        device = torch.device("cuda" if use_cuda else "cpu")
+
+        #Cross entropy loss function
+        criterion = nn.CrossEntropyLoss()
+
+        #Adam based optimizing function that alters the weights
+        optimizer = Adam(self.model.parameters(), lr= self.learning_rate)
+
+        if use_cuda:
+                self.model = self.model.cuda()
+                criterion = criterion.cuda()
+
+        for epoch_num in range(self.epochs):
+
+                total_acc_train = 0
+                total_loss_train = 0
+
+                #tdqm makes a progress bar for every item itterated
+                for train_input, train_label in tqdm(train_dataloader):
+
+                    train_label = train_label.to(device)
+                    mask = train_input['attention_mask'].to(device)
+                    input_id = train_input['input_ids'].squeeze(1).to(device)
+
+                    output = self.model(input_id, mask)
+                    
+                    batch_loss = criterion(output, train_label.long())
+                    total_loss_train += batch_loss.item()
+                    
+                    acc = (output.argmax(dim=1) == train_label).sum().item()
+                    total_acc_train += acc
+
+                    self.model.zero_grad()
+                    batch_loss.backward()
+                    optimizer.step()
+                
+                total_acc_val = 0
+                total_loss_val = 0
+
+                #disable gradient calculations for validation data set
+                with torch.no_grad():
+
+                    for val_input, val_label in val_dataloader:
+
+                        val_label = val_label.to(device)
+                        mask = val_input['attention_mask'].to(device)
+                        input_id = val_input['input_ids'].squeeze(1).to(device)
+
+                        output = self.model(input_id, mask)
+
+                        batch_loss = criterion(output, val_label.long())
+                        total_loss_val += batch_loss.item()
+                        
+                        acc = (output.argmax(dim=1) == val_label).sum().item()
+                        total_acc_val += acc
+                
+                print(
+                    f'Epochs: {epoch_num + 1} | Train Loss: {total_loss_train / len(self.train_data): .3f} \
+                    | Train Accuracy: {total_acc_train / len(self.train_data): .3f} \
+                    | Val Loss: {total_loss_val / len(self.val_data): .3f} \
+                    | Val Accuracy: {total_acc_val / len(self.val_data): .3f}')
+
+    def evaluate(self):
+
+
+        test_dataloader = torch.utils.data.DataLoader(self.test_data, batch_size=2)
+
+        use_cuda = torch.cuda.is_available()
+        device = torch.device("cuda" if use_cuda else "cpu")
+
+        if use_cuda:
+
+            self.model = self.model.cuda()
+
+        total_acc_test = 0
+        with torch.no_grad():
+
+            for test_input, test_label in test_dataloader:
+
+                test_label = test_label.to(device)
+                mask = test_input['attention_mask'].to(device)
+                input_id = test_input['input_ids'].squeeze(1).to(device)
+
+                output = self.model(input_id, mask)
+
+                acc = (output.argmax(dim=1) == test_label).sum().item()
+                total_acc_test += acc
+        
+        print(f'Test Accuracy: {total_acc_test / len(self.test_data): .3f}')
+
+
+
+
+
+#______-Functions-______#
 path = '/home/zek/School/Information Ecosystem Threats/Network-Of-Deciet' +  "/stereotypes.json"
-
-##########################
-## Functions            ##
-##########################
 
 #open up the json file and make a data frame out of it
 #reformat the data into something more palatable, decomposing the sentences list
@@ -20,116 +201,100 @@ def parse_And_Make_DataFrame(which):
 
     temp_dict_list = []
     inter = data["data"][which]
-    for i in inter:
-        j = 0
-        lis = i.pop("sentences")
+    for bundle in inter:
+        lis = bundle.pop("sentences")
+        context = bundle.pop("context")
         for k in lis:
-            i[f"response {j}"] = k["sentence"]
-            i[f"label {j}"] = k["gold_label"]
-            j += 1
-        temp_dict_list.append(i)
+            if k["gold_label"] != "anti-stereotype":
+                t = k["sentence"]
+                temp_dict_list.append({
+                    "text": f"{context} {t}",
+                    "label" : k["gold_label"]
+                })
     return pd.DataFrame(temp_dict_list)
 
-#make all data tokenized
-def tokenize_all_data(df, inputs, tokenizer):
-    df_index = 0
-    new_df = 0
-    df_len = len(df)
-    #tokenize the sentences at the following index
-    def tok(name, index):
-        return tokenizer.encode_plus(
-            df[name][index], #text to be tokenized
-            max_length = 128,
-            truncation=True, #Truncate scentences that are longer than 128 digit representation
-            padding='max_length', #pads all sentences to 128 digit representations
-            add_special_tokens=True, #Adds special tokens relative to their model
-            return_tensors='tf' #returns the algebraic object that describes a multilinear relationship between sets of algebraic objects (aka sentence summary)
-        )
-        
-    while df_index != df_len: #because df_index starts from 0
-        first_sentence = tok("response 0", df_index)
-        second_sentence = tok("response 1", df_index)
-        third_sentence = tok("response 2", df_index)
 
-		#at index n, fill up that whole row
-        #print(f"Df_len: {df_len}, df_index: {df_index}, new_df: {new_df}")
-        #ids[new_df, :], masks[new_df, :] = first_sentence.input_ids, first_sentence.attention_mask
-        #ids[new_df+1, :], masks[new_df+1, :] = second_sentence.input_ids, second_sentence.attention_mask
-        #ids[new_df+2, :], masks[new_df+2, :] = third_sentence.input_ids, third_sentence.attention_mask
-        
-        inputs.append(first_sentence)
-        
-
-        df_index+= 1
-        new_df+=3
-    return inputs, None
-
-# def get_bert_embeddings(inputs, model):
-#     """
-#     Obtains BERT embeddings for tokens.
-#     """
-#     # gradient calculation id disabled
-#     with torch.no_grad():
-#       # obtain hidden states
-#       outputs = model(**inputs)
-#       hidden_states = outputs[2]
-        
-#     # concatenate the tensors for all layers use "stack" to create new dimension in tensor
-#     token_embeddings = torch.stack(hidden_states, dim=0)
-    
-#     # remove dimension 1, the "batches"
-#     token_embeddings = torch.squeeze(token_embeddings, dim=1)  
-      
-#     # swap dimensions 0 and 1 so we can loop over tokens
-#     token_embeddings = token_embeddings.permute(1,0,2)    
-    
-#     # intialized list to store embeddings
-#     token_vecs_sum = []    
-    
-#     # "token_embeddings" is a [Y x 12 x 768] tensor
-#     # where Y is the number of tokens in the sentence    
-#     # loop over tokens in sentence
-#     for token in token_embeddings:    
-#     # "token" is a [12 x 768] tensor, sum the vectors from the last four layers
-#         sum_vec = torch.sum(token[-4:], dim=0)
-#         token_vecs_sum.append(sum_vec)
-#     return token_vecs_sum
-
-        
-
-##########################
-## Data Preparation     ##
-##########################
+#______-Data Prep-______#
+labels = {'stereotype':0,
+          'unrelated':1,
+}
+tokenizer = BertTokenizer.from_pretrained('/home/zek/School/Information Ecosystem Threats/Network-Of-Deciet/bert-base-uncased')
 
 #Make data frames
 df_inter = parse_And_Make_DataFrame("intersentence")
 df_intra = parse_And_Make_DataFrame("intrasentence")
 df_inter.info()
 
+#Split df into df[:.8], df[.8:.9], df[.9:]
+#Esentially 80%, 10%, 10%
+df_train, df_val, df_test = np.split(df_inter, [int(.8*len(df_inter)), int(.9*len(df_inter))])
+true_dataset = lambda x: Dataset(x, labels, tokenizer)
+df_train, df_val, df_test = true_dataset(df_train), true_dataset(df_val), true_dataset(df_test)
 
-#--[Setting up BERT]--#
+#______-Classifier Creation, Training, and Evaluation-______#
+classifierModerl = BertClassifier()
+tt = TrainAndEvaluate(classifierModerl, df_train, df_test, df_val)
+tt.train()
+# tt.evaluate()
 
+
+
+
+###############
+## Knowledge ##
+###############
+# Pytourch is utilized for low level operations with ML, and is typically used in research, annoying but at least every detail is known
+# Tensorflow is more oriented towards high level use, is a pain in the ass to use due to its high level, don't know whats happening
+# Conda is a package manager for R and python for developing data scientests
+# Published papers are a good source for technical detail once a basis is understood, but before reading papers make sure to get a good basis
+
+#======BERT======#
 #https://huggingface.co/bert-base-uncased?text=The+goal+of+life+is+%5BMASK%5D.
-tokenizer = BertTokenizer.from_pretrained('/home/zek/School/Information Ecosystem Threats/Network-Of-Deciet/bert-base-uncased')
-bert_model = BertModel.from_pretrained('/home/zek/School/Information Ecosystem Threats/Network-Of-Deciet/bert-base-uncased', output_hidden_states=True)
-
 #Input IDs correlate to the index of tokens within a large lexicon
 #attention mask is rows describing which indexes have tokens that should be analyized, which ones are padding and which ones aren't
 #Segement type IDs are for context, it gives back the type of grammar it is
-
-#gernerate token and mask IDs
-#makes a matrix that is n*3 by 128
-#input_ids = np.zeros((len(df_inter) * 3, 128))
-#att_masks = np.zeros((len(df_inter) * 3, 128))
-inputs = []
-input_ids, att_masks = tokenize_all_data(df_inter, inputs, tokenizer)
-
-# response = get_bert_embeddings(inputs[0], bert_model)
-
-# print(response[0].stride())
-# print(type(response[0]))
+#<---- BERT Offline ---->
+'''BERT offline is significantly less annoying to use on a local machine. This way it does not need to download
+the BERT setup everytime the script is ran. If BERT gets updated then thats an issue but :/'''
 
 
+#======Crash course on NN======#
+#<---- Activation Function ---->
+'''Transforms the sum of weights into some value which is sandwhiched between an upper and lower limit'''
+'''The idea behind it is to simulate the activation of a neuron within your brain, so either on or off.
+Some activation functions don't follow this principle such as ReLU which allows the input value to go beyond 1.'''
 
+#<---- Training Neural Network ---->
+'''Weights are constantly being optimized to find the optimal values which allow for the least amount of loss (error).'''
+'''A method to do this is through derivatives. Take the derivative weights within the model with respect to the loss,
+then multiple it by the learning rate. Finally add that new value to the weight within the NN'''
 
+#<---- Learning Rate ---->
+'''The steps taken to minimize the loss within the NN'''
 
+#<---- Training, Testing, Validation Set ---->
+'''The training set is the data that would be utilized to train the neural network during each epoch'''
+
+'''The validation set is used to make sure that the model is not overfitting. Used to make sure that the NN is not
+just getting really good with the training set. If it is able to peform well with both the training set and validation
+set then we know we're good.'''
+
+'''Used to test model after it is done training, is unlabled when entering'''
+
+#<---- Loss Functions ---->
+'''Loss functions are used to measure the eror between the predicted values vs the provided target values '''
+'''Can have different type of loss functions such as, regression (used for predicting continous values),
+classification (used when predicting discrete values), ranking (used when predicting relative values)'''
+'''Affects the weights within the NN'''
+
+#<---- Epoch ---->
+'''One single pass of all the data to the network'''
+
+#<---- Batch Size ---->
+'''Number of samples that will be passed through to the network at one time'''
+'''Used to help make the NN run faster in certain cases but can also cause for worse predictions'''
+
+#<---- Drop out ---->
+'''During training, randomly zero out some of the elements of the input tensor with probability p using samples from
+a bernoulli distribution.'''
+'''Has been proven to be an effective technique for regularization and preventing co-adaptation of neurons https://arxiv.org/abs/1207.0580'''
