@@ -7,3 +7,4 @@ tweets/
 ScrapedTweets/
 pickledModel.pickle
 stereotype_detection_model.pt
+__pycache__/
