@@ -1,38 +1,61 @@
-import torch
+import json
+import pandas as pd
+import numpy as np
 import os
-from trainModel import BertClassifier, Dataset
+import torch
+from torch import nn
+from trainModel import BertClassifier, ModelHelper
 from transformers import BertTokenizer, BertModel
+from torch.optim import Adam
+from tqdm import tqdm
 
 
-
-class UseModel():
+class UseModel(ModelHelper):
     def __init__(self, model_path, tokinizer_path):
         self.model = torch.load(model_path)
         # self.model.load_state_dict(torch.load(model_path))
-        self.model.eval()
+        #self.model.eval()
         self.tokenizer = BertTokenizer.from_pretrained(tokinizer_path)
-        self.use_cuda = torch.cuda.is_available()
-        self.device = torch.device("cuda" if self.use_cuda else "cpu")
     
 
+
+    #The data type input is the same so WHY IS IT NOT WORKING
+    #The output is just [nan, nan] wtf???
     def testScentence(self, scentence):
-        tokinized_text = self.tokenizer(scentence, padding='max_length', max_length = 512, 
-        truncation=True, return_tensors="pt")
+        self._set_device()
+        tokinized_text = self._tokinize_text(self.tokenizer, scentence)
         
         self.model.to(self.device)
-        print(tokinized_text)
 
         with torch.no_grad():
-            mask = tokinized_text['attention_mask'].to(self.device)
-            input_id = tokinized_text['input_ids'].squeeze(1).to(self.device)
-            print(self.device)
-            output = self.model(mask, input_id)
+            tokinized_text, mask, input_id = self._prep_input(tokinized_text)
+            output = self.model(input_id, mask)
 
-            print(output)
+            print(output.item())
+            print(f'{"Stereotype" if output.argmax(dim=1).item() == 0 else "Not stereotype"}')
 
 cwd = os.getcwd()
 # um = UseModel(f'{cwd}/stereotype_detection_model.pt', f'{cwd}/bert-base-uncased')
 um = UseModel(f'{cwd}/pickledModel.pickle', f'{cwd}/bert-base-uncased')
 
-um.testScentence("Many people live in Ethiopia.The people are very thin and good at distance running.")
-um.testScentence("Black people smell and love watermellon")
+#um.testScentence("Many people live in Ethiopia.The people are very thin and good at distance running.")
+um.testScentence("Hispanic people love beans and are all from mexico.")
+um.testScentence("Bitches ain't shit.")
+um.testScentence("Women are bad drivers, and can't do math.")
+um.testScentence("Women are bad drivers.")
+print()
+
+um.testScentence("Women are great at taking care of children.")
+um.testScentence("Elderly people are always so nice.")
+
+print()
+
+um.testScentence("I LOVE PIE SO MUCH.")
+um.testScentence("What a guy gotta do to get some pie.")
+um.testScentence("CAN A MOTHERFUCKER GET SOME PIE GOD DAM.")
+
+
+##############################################
+## Reason why it was not working previously ##
+##############################################
+#I had mask and input_id mixed up :/ :/ :/ :( :[

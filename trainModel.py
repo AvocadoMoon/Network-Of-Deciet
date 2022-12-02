@@ -7,23 +7,48 @@ from torch import nn
 from transformers import BertTokenizer, BertModel
 from torch.optim import Adam
 from tqdm import tqdm
+from sklearn.metrics import classification_report
 
 path = os.getcwd()
 
-#responsible for accessing and processing single instances of data
-class Dataset(torch.utils.data.Dataset):
+#<-- Helps with tasks that need to be done universially to use this model -->
+class ModelHelper():
+    def __init__(self):
+        self.device = None
+    
+    def _set_device(self, device=None):
+        if device == None:
+            #check if cuda cores are available to utilize, and if so set them to the device
+            self.device = torch.device("cuda" if torch.cuda.is_available else "cpu")
+        else:
+            self.device = device
 
-    def __init__(self, df, labels=None, tokenizer=None):
+    def _prep_input(self, tokinized_text, labels=None):
+        tokinized_text = tokinized_text.to(self.device)
+        mask = tokinized_text['attention_mask'].to(self.device)
+        #Squeeze is used to make the tensor with input_ids unpackable
+        input_id = tokinized_text['input_ids'].squeeze(1).to(self.device)
+        if (labels != None):
+            labels = labels.to(self.device)
+            return tokinized_text, mask, input_id, labels
+        return tokinized_text, mask, input_id
+    
+    def _tokinize_text(self, tokinizer, text):
+        return tokinizer(text, padding='max_length', max_length = 512, truncation=True,
+                                return_tensors="pt")
+
+
+#responsible for accessing and processing single instances of data
+class Dataset(torch.utils.data.Dataset, ModelHelper):
+
+    def __init__(self, df, labels, tokenizer):
 
         #each label that is within the data frame is converted to its numeric representation, and the index within this
         #list corresponds to the index within the self.texts list
         self.labels = [labels[label] for label in df['label']]
 
         #tokenize all text that is given, and store it within a singular list
-        self.texts = [tokenizer(text, 
-                               padding='max_length', max_length = 512, truncation=True,
-                                return_tensors="pt") for text in df['text']]
-
+        self.texts = [self._tokinize_text(tokenizer, text) for text in df['text']]
     def classes(self):
         return self.labels
 
@@ -45,8 +70,33 @@ class Dataset(torch.utils.data.Dataset):
 
         return batch_texts, batch_y
 
-class BertClassifier(nn.Module):
 
+class BertClassifierLSTM(nn.Module):
+    def __init__(self, droupout=0.5, hidden_dim=6):
+        super(BertClassifierLSTM, self).__init__()
+
+        #Bert model for tokinization
+        self.bert = BertModel.from_pretrained(f'{path}/bert-base-uncased')
+
+        #
+        self.dropout = nn.Dropout(droupout)
+
+        #takes the word vector of dimesonality 768 and outputs hidden states with dimetionsality
+        #hidden state
+        self.lstm = nn.LSTM(768, hidden_dim)
+
+        # The linear layer that maps from hidden state space to stereotype space
+        self.hidden2stereotype = nn.Linear(hidden_dim, 2)
+    
+    def forward(self, input_id, mask):
+
+        sentence_vectors, pooled_output = self.bert(input_id=input_id, attention_mask=mask, return_dict=False)
+
+
+
+
+#<-- Linear Feed foward network -->
+class BertClassifier(nn.Module):
     def __init__(self, dropout=0.5):
 
         super(BertClassifier, self).__init__()
@@ -58,6 +108,7 @@ class BertClassifier(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         #input of neural network is a 768 dimensional vector and output is two dimensions, in accordiance to number of labels
+        #does a linear transformation to the incoming data
         self.linear = nn.Linear(768, 2)
 
         #the nerual network activation function (ReLU curve)
@@ -79,7 +130,8 @@ class BertClassifier(nn.Module):
 
         return final_layer
 
-class TrainAndEvaluate():
+
+class TrainAndEvaluate(ModelHelper):
     def __init__(self, model, train_data, test_data, val_data, learning_rate=1e-6, epochs=5, batch_size=2):
         self.model = model
         self.train_data = train_data
@@ -88,7 +140,13 @@ class TrainAndEvaluate():
         self.epochs = epochs
         self.test_data = test_data
         self.batch_size = batch_size
+        self.device = None
 
+    def class_report(self, data, predictions):
+        return classification_report(data.classes(), predictions, target_names=['Stereotype', 'Unreleated'], labels=[0, 1])
+    
+    def extenstion(self, output, list):
+        list.extend(output.argmax(dim=1).tolist())
 
     def train(self):
 
@@ -96,98 +154,149 @@ class TrainAndEvaluate():
         train_dataloader = torch.utils.data.DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
         val_dataloader = torch.utils.data.DataLoader(self.val_data, batch_size=self.batch_size)
 
-        #check if cuda cores are available to utilize
-        use_cuda = torch.cuda.is_available()
-        device = torch.device("cuda" if use_cuda else "cpu")
-
         #Cross entropy loss function
-        criterion = nn.CrossEntropyLoss()
+        lossFunction = nn.CrossEntropyLoss()
 
         #Adam based optimizing function that alters the weights
         optimizer = Adam(self.model.parameters(), lr= self.learning_rate)
 
-        if use_cuda:
-                self.model = self.model.cuda()
-                criterion = criterion.cuda()
+        #set model and functions to appropiate device
+        self._set_device()
+        self.model = self.model.to(self.device)
+        lossFunction = lossFunction.to(self.device)
 
         for epoch_num in range(self.epochs):
-
                 total_acc_train = 0
                 total_loss_train = 0
+                predictions = []
+                validation_predictions = []
 
                 #tdqm makes a progress bar for every item itterated
                 for train_input, train_label in tqdm(train_dataloader):
-
-                    train_label = train_label.to(device)
-                    mask = train_input['attention_mask'].to(device)
-                    input_id = train_input['input_ids'].squeeze(1).to(device)
-
-                    #output is a probability matrix 
-                    output = self.model(input_id, mask)
-                    
-                    batch_loss = criterion(output, train_label.long())
-                    total_loss_train += batch_loss.item()
-                    
-                    acc = (output.argmax(dim=1) == train_label).sum().item()
-                    total_acc_train += acc
-
+                    #1). clear out gradient, PyTorch accumulates them otherwise
                     self.model.zero_grad()
+
+                    #2). prepare input for model
+                    train_input, mask, input_id, train_label = self._prep_input(train_input, train_label)
+
+                    #3). get output tensor from model, automatically handles batch size
+                    output = self.model(input_id, mask)
+                    self.extenstion(output, predictions)
+                    #print(output.argmax(dim=1).tolist())
+                    
+                    #4). Compute the loss, gradients, and update the paramters, output is a two dimensional tensor
+                    #each dimension represents the confidence of the model for that label. 
+                    #index 0 means that it is a stereotype, and index 1 means that it is not
+                    batch_loss = lossFunction(output, train_label.long())
+                    total_loss_train += batch_loss.item()
+
                     batch_loss.backward()
                     optimizer.step()
+                    
+                    #5). Determine accuracy of model, find the index for max confidence of each row
+                    #compare it to the index that is expected (stero is 0, not is 1)
+                    #summate all the accurate predictions, convert it to scalar, and add it to total of accurate predictions
+                    acc = (output.argmax(dim=1) == train_label).sum().item()
+                    total_acc_train += acc
                 
                 total_acc_val = 0
                 total_loss_val = 0
 
-                #disable gradient calculations for validation data set
-                with torch.no_grad():
 
+                #disable gradient calculations for validation data set, and do no optimizations
+                with torch.no_grad():
                     for val_input, val_label in val_dataloader:
 
-                        val_label = val_label.to(device)
-                        mask = val_input['attention_mask'].to(device)
-                        input_id = val_input['input_ids'].squeeze(1).to(device)
+                        #1). Prepare input data
+                        val_input, mask, input_id, val_label = self._prep_input(val_input, val_label)
 
+                        #2). Get the output tensor
                         output = self.model(input_id, mask)
+                        self.extenstion(output, validation_predictions)
 
-                        batch_loss = criterion(output, val_label.long())
+                        #3). Calculate the loss utilizing the loss function
+                        batch_loss = lossFunction(output, val_label.long())
                         total_loss_val += batch_loss.item()
                         
+                        #4). Calculate accuracy
                         acc = (output.argmax(dim=1) == val_label).sum().item()
                         total_acc_val += acc
+
+                train_results = self.class_report(self.train_data, predictions)
+                val_results = self.class_report(self.val_data, validation_predictions)
+
+                with open(f'{path}/results.txt', 'a') as f:
+                    f.write(
+                        f'''Epoch: {epoch_num + 1} 
+                    || Train Results ||
+                    {train_results}
+                    
+                    || Validation Results ||
+                    {val_results}
+                    '''
+                    )
                 
+                print(train_results)
+                print(val_results)
+
                 print(
                     f'Epochs: {epoch_num + 1} | Train Loss: {total_loss_train / len(self.train_data): .3f} \
                     | Train Accuracy: {total_acc_train / len(self.train_data): .3f} \
                     | Val Loss: {total_loss_val / len(self.val_data): .3f} \
                     | Val Accuracy: {total_acc_val / len(self.val_data): .3f}')
 
+
     def evaluate(self):
-
-
         test_dataloader = torch.utils.data.DataLoader(self.test_data, batch_size=2)
 
-        use_cuda = torch.cuda.is_available()
-        device = torch.device("cuda" if use_cuda else "cpu")
-
-        if use_cuda:
-
-            self.model = self.model.cuda()
+        self._set_device()
+        self.model = self.model.to(self.device)
 
         total_acc_test = 0
+        test_predictions = []
         with torch.no_grad():
-
             for test_input, test_label in test_dataloader:
 
-                test_label = test_label.to(device)
-                mask = test_input['attention_mask'].to(device)
-                input_id = test_input['input_ids'].squeeze(1).to(device)
+                test_input, mask, input_id, test_label = self._prep_input(test_input, test_label)
 
                 output = self.model(input_id, mask)
+                test_predictions.extend(output.argmax(dim=1).tolist())
 
                 acc = (output.argmax(dim=1) == test_label).sum().item()
                 total_acc_test += acc
         
+        test_results = classification_report(self.test_data.classes(), test_predictions, target_names=['Stereotype', 'Unreleated'], labels=[0, 1])
+        with open(f'{path}/results.txt', 'a') as f:
+            f.write(
+                f'''
+                || Test Results ||
+                {test_results}'''
+            )
+
+        print(test_results)
         print(f'Test Accuracy: {total_acc_test / len(self.test_data): .3f}')
+    
+    def testCustomSentences(self, scentence, tokinizer):
+        self._set_device()
+
+        tokinized = self._tokinize_text(tokinizer, scentence)
+        tokinized, mask, input_id = self._prep_input(tokinized)
+
+        self.model = self.model.to(self.device)
+        output = self.model(input_id, mask)
+        print(output)
+        max_index = output.argmax(dim=1).item()
+
+        if (max_index == 1):
+            print("Not a stereotype")
+        elif(max_index == 0):
+            print("Stereotype")
+    
+    def saveModel(self):
+        save_path = f'{path}/stereotype_detection_model.pth'
+        pickle_path = f'{path}/pickledModel.pickle'
+        torch.save(self.model.state_dict(), save_path)
+        torch.save(self.model, pickle_path)
 
 
 
@@ -241,12 +350,12 @@ if __name__ == "__main__":
     tt.train()
     tt.evaluate()
 
+    tt.testCustomSentences("Hispanic people love beans and are all from mexico.", tokenizer)
+    tt.testCustomSentences("Woman are bad drivers.", tokenizer)
+    tt.testCustomSentences("Woman are bad drivers", tokenizer)
+
     #______-Save the trained model-______#
-    #This method makes it so that 
-    save_path = f'{path}/stereotype_detection_model.pt'
-    pickle_path = f'{path}/pickledModel.pickle'
-    torch.save(classifierModerl.state_dict(), save_path)
-    torch.save(classifierModerl, pickle_path)
+    tt.saveModel()
 
 
 
@@ -316,6 +425,9 @@ classification (used when predicting discrete values), ranking (used when predic
 a bernoulli distribution.'''
 '''Has been proven to be an effective technique for regularization and preventing co-adaptation of neurons https://arxiv.org/abs/1207.0580'''
 
+#<---- Hidden states ---->
+'''Hidden states are the inner portion of the neural network that do not produce any output or allow input from user.
+They are the layers which are hidden.'''
 
 #<---- Long Short Term Memory ---->
 '''A form of Neural Network that is used to solve the exploding/vanashing gradient problem within recurent nueral networks(RNN)'''
@@ -326,3 +438,15 @@ a bernoulli distribution.'''
 '''Similar to LSTM but it is much faster since it can run in parallel'''
 '''Typically is used for text translation. It has multiple layers, that being an attention head and feed foward.'''
 '''Linear layer of the transformer is utilized to help map a probabilites of vector output to a possible output'''
+
+#<---- F1 Score ---->
+''' Average of percision and recall'''
+
+#<---- Percision---->
+'''The test is consitant upon its predictions. False positives are low.'''
+
+#<---- Recall ---->
+'''False negatives are low'''
+
+#<---- Accuracy ---->
+'''Accurate if the information is what is expected'''
