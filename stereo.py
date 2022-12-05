@@ -28,10 +28,10 @@ class UseModel(ModelHelper):
         self.model.to(self.device)
 
         with torch.no_grad():
-            tokinized_text, mask, input_id = self._prep_input(tokinized_text)
-            output = self.model(input_id, mask)
+            tokinized_text, mask, input_id, token_id = self._prep_input(tokinized_text)
+            output = self.model(input_id, mask, token_id)
 
-            print(output.item())
+            print(output)
             print(f'{"Stereotype" if output.argmax(dim=1).item() == 0 else "Not stereotype"}')
 
 cwd = os.getcwd()
@@ -53,6 +53,10 @@ print()
 um.testScentence("I LOVE PIE SO MUCH.")
 um.testScentence("What a guy gotta do to get some pie.")
 um.testScentence("CAN A MOTHERFUCKER GET SOME PIE GOD DAM.")
+
+um.testScentence("Did you know, all hispanic people lick beans for subtance.")
+um.testScentence("I love beans so much! Lets go beans.")
+um.testScentence("Me and my hispanic brothers love black beans. Red beans though are trash.")
 
 
 ##############################################

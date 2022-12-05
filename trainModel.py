@@ -28,10 +28,11 @@ class ModelHelper():
         mask = tokinized_text['attention_mask'].to(self.device)
         #Squeeze is used to make the tensor with input_ids unpackable
         input_id = tokinized_text['input_ids'].squeeze(1).to(self.device)
+        token_id = tokinized_text["token_type_ids"].squeeze(1).to(self.device)
         if (labels != None):
             labels = labels.to(self.device)
-            return tokinized_text, mask, input_id, labels
-        return tokinized_text, mask, input_id
+            return tokinized_text, mask, input_id, token_id, labels
+        return tokinized_text, mask, input_id, token_id
     
     def _tokinize_text(self, tokinizer, text):
         return tokinizer(text, padding='max_length', max_length = 512, truncation=True,
@@ -114,10 +115,10 @@ class BertClassifier(nn.Module):
         #the nerual network activation function (ReLU curve)
         self.relu = nn.ReLU()
 
-    def forward(self, input_id, mask):
+    def forward(self, input_id, mask, token_id):
         #get the response from the bert model, first variable is embedding vectors for tokens in sentence,
         #second is for embedding vector of the [CLS] token which is sentence-level classification and what matters for this classifier
-        sentence_vectors, pooled_output = self.bert(input_ids= input_id, attention_mask=mask,return_dict=False)
+        sentence_vectors, pooled_output = self.bert(input_ids= input_id, attention_mask=mask, token_type_ids = token_id, return_dict=False)
 
         #first take the input and run it through the dropout function, determine which information is masked
         dropout_output = self.dropout(pooled_output)
@@ -177,10 +178,10 @@ class TrainAndEvaluate(ModelHelper):
                     self.model.zero_grad()
 
                     #2). prepare input for model
-                    train_input, mask, input_id, train_label = self._prep_input(train_input, train_label)
+                    train_input, mask, input_id, token_id, train_label = self._prep_input(train_input, train_label)
 
                     #3). get output tensor from model, automatically handles batch size
-                    output = self.model(input_id, mask)
+                    output = self.model(input_id, mask, token_id)
                     self.extenstion(output, predictions)
                     #print(output.argmax(dim=1).tolist())
                     
@@ -208,10 +209,10 @@ class TrainAndEvaluate(ModelHelper):
                     for val_input, val_label in val_dataloader:
 
                         #1). Prepare input data
-                        val_input, mask, input_id, val_label = self._prep_input(val_input, val_label)
+                        val_input, mask, input_id, token_id, val_label = self._prep_input(val_input, val_label)
 
                         #2). Get the output tensor
-                        output = self.model(input_id, mask)
+                        output = self.model(input_id, mask, token_id)
                         self.extenstion(output, validation_predictions)
 
                         #3). Calculate the loss utilizing the loss function
@@ -226,15 +227,7 @@ class TrainAndEvaluate(ModelHelper):
                 val_results = self.class_report(self.val_data, validation_predictions)
 
                 with open(f'{path}/results.txt', 'a') as f:
-                    f.write(
-                        f'''Epoch: {epoch_num + 1} 
-                    || Train Results ||
-                    {train_results}
-                    
-                    || Validation Results ||
-                    {val_results}
-                    '''
-                    )
+                    f.write(f'''Epoch: {epoch_num + 1} \n|| Train Results ||\n{train_results}\n|| Validation Results ||\n{val_results}\n''')
                 
                 print(train_results)
                 print(val_results)
@@ -257,9 +250,9 @@ class TrainAndEvaluate(ModelHelper):
         with torch.no_grad():
             for test_input, test_label in test_dataloader:
 
-                test_input, mask, input_id, test_label = self._prep_input(test_input, test_label)
+                test_input, mask, input_id, token_id, test_label = self._prep_input(test_input, test_label)
 
-                output = self.model(input_id, mask)
+                output = self.model(input_id, mask, token_id)
                 test_predictions.extend(output.argmax(dim=1).tolist())
 
                 acc = (output.argmax(dim=1) == test_label).sum().item()
@@ -267,11 +260,7 @@ class TrainAndEvaluate(ModelHelper):
         
         test_results = classification_report(self.test_data.classes(), test_predictions, target_names=['Stereotype', 'Unreleated'], labels=[0, 1])
         with open(f'{path}/results.txt', 'a') as f:
-            f.write(
-                f'''
-                || Test Results ||
-                {test_results}'''
-            )
+            f.write(f'''|| Test Results ||\n{test_results}''')
 
         print(test_results)
         print(f'Test Accuracy: {total_acc_test / len(self.test_data): .3f}')
@@ -280,10 +269,10 @@ class TrainAndEvaluate(ModelHelper):
         self._set_device()
 
         tokinized = self._tokinize_text(tokinizer, scentence)
-        tokinized, mask, input_id = self._prep_input(tokinized)
+        tokinized, mask, input_id, token_id = self._prep_input(tokinized)
 
         self.model = self.model.to(self.device)
-        output = self.model(input_id, mask)
+        output = self.model(input_id, mask, token_id)
         print(output)
         max_index = output.argmax(dim=1).item()
 
@@ -320,9 +309,10 @@ if __name__ == "__main__":
                 if k["gold_label"] != "anti-stereotype":
                     t = k["sentence"]
                     temp_dict_list.append({
-                        "text": f"{context} {t}",
+                        "text": f"{context}{t}",
                         "label" : k["gold_label"]
                     })
+                    print(f'{context}{t}')
         return pd.DataFrame(temp_dict_list)
 
 
@@ -335,7 +325,7 @@ if __name__ == "__main__":
 
     #Make data frames
     df_inter = parse_And_Make_DataFrame("intersentence")
-    df_intra = parse_And_Make_DataFrame("intrasentence")
+    #df_intra = parse_And_Make_DataFrame("intrasentence")
     df_inter.info()
 
     #Split df into df[:.8], df[.8:.9], df[.9:]
@@ -450,3 +440,8 @@ They are the layers which are hidden.'''
 
 #<---- Accuracy ---->
 '''Accurate if the information is what is expected'''
+
+#<---- Bias, and Weights ---->
+'''Weights are the values associated with features, and tell how significant every feature.
+The higher the weight, the greater impact it has.'''
+'''Bias shifts the activation function across the plane'''
