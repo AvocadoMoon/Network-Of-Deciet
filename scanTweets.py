@@ -20,13 +20,15 @@ class ScanTweets(ModelHelper):
         #self.model.eval()
         self.tokenizer = BertTokenizer.from_pretrained(tokinizer_path)
     
-    def scrubAndTokinize(self, tweet):
+    def scrubTweet(self, tweet):
         tweet = str(tweet) #for some reason I need to do this even though it says its type is STRING beforehand
         temp = preprocessor.clean(tweet) #deals with URL's, mentions, and emojis
-        temp = re.sub("[^A-Za-z. ]","", temp) #if its not A-Z, a-z, or a period than REMOVE IT
-        return self._tokinize_text(self.tokenizer, temp)
+        temp = re.sub("[^A-Za-z ]","", temp) #if its not A-Z, a-z, or a period than REMOVE IT
+        temp = ' '.join(temp.split())
+        return temp
 
     def oneDaysTweets(self, path):
+        print(f"On file: {path}/tweets.csv")
         tweetDF = pd.read_csv(f'{path}/tweets.csv')
         columnNames = list(tweetDF.columns)
         columnNames.append("Certainity")
@@ -34,25 +36,33 @@ class ScanTweets(ModelHelper):
         stereoIndex = 0
         for rIndex in tqdm(range(len(tweetDF))):
             tweet = tweetDF.loc[rIndex]["Tweet"]
-            tweet = self.scrubAndTokinize(tweet)
+            tweet = self.scrubTweet(tweet)
             catagory = self.catagorizeTweet(tweet)
-            if (catagory.argmax(dim=1).item() == 0):
-                print(tweet)
-                stereoDF.loc[stereoIndex] = tweetDF.loc[rIndex]
-                stereoDF[stereoIndex]["Certainity"] = catagory.tolist()
+            catagory = catagory.tolist()
+            catagory = catagory[0]
+    
+            i = catagory.index(max(catagory))
+            if (i == 0 and (catagory[0] - catagory[1]) > 3):
+                #print(tweet)
+                s = tweetDF.loc[rIndex].to_list()
+                s.append(catagory[i])
+                stereoDF.loc[stereoIndex] = s
                 stereoIndex += 1
         stereoDF.to_csv(f'{path}/stereo.csv')
         
     def catagorizeTweet(self, tweet):
         self._set_device()
-        tokinized_text = self.scrubAndTokinize(tweet)
         self.model.to(self.device)
+        tokinizedTweet = self._tokinize_text(self.tokenizer, tweet)
 
         with torch.no_grad():
-            tokinized_text, mask, input_id, token_id = self._prep_input(tokinized_text)
+            tokinized_text, mask, input_id, token_id = self._prep_input(tokinizedTweet)
             output = self.model(input_id, mask, token_id)
 
             return output
+    
+    def calculateRatios(self):
+        pass
 
 
 cwd = os.getcwd()
@@ -60,4 +70,4 @@ tweetFolder = f'{cwd}/ScrapedTweets'
 # um = UseModel(f'{cwd}/stereotype_detection_model.pt', f'{cwd}/bert-base-uncased')
 tweetScan = ScanTweets(f'{cwd}/pickledModel.pickle', f'{cwd}/bert-base-uncased')
 for i in os.listdir(tweetFolder):
-    tweetScan.oneDaysTweets(i)
+    tweetScan.oneDaysTweets(f'{tweetFolder}/{i}')

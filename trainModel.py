@@ -8,6 +8,7 @@ from transformers import BertTokenizer, BertModel
 from torch.optim import Adam
 from tqdm import tqdm
 from sklearn.metrics import classification_report
+import re
 
 path = os.getcwd()
 
@@ -113,7 +114,7 @@ class BertClassifier(nn.Module):
         self.linear = nn.Linear(768, 2)
 
         #the nerual network activation function (ReLU curve)
-        self.relu = nn.ReLU()
+        self.relu = nn.Softmax(dim=1)
 
     def forward(self, input_id, mask, token_id):
         #get the response from the bert model, first variable is embedding vectors for tokens in sentence,
@@ -133,7 +134,7 @@ class BertClassifier(nn.Module):
 
 
 class TrainAndEvaluate(ModelHelper):
-    def __init__(self, model, train_data, test_data, val_data, learning_rate=1e-6, epochs=5, batch_size=2):
+    def __init__(self, model, train_data, test_data, val_data, learning_rate=1e-7, epochs=5, batch_size=2):
         self.model = model
         self.train_data = train_data
         self.val_data = val_data
@@ -308,11 +309,13 @@ if __name__ == "__main__":
             for k in lis:
                 if k["gold_label"] != "anti-stereotype":
                     t = k["sentence"]
+                    temp = f'{context} {t}'
+                    temp = re.sub("[^A-Za-z ]","", temp) #if its not A-Z, a-z, or a period than REMOVE IT
+                    temp = ' '.join(temp.split())
                     temp_dict_list.append({
-                        "text": f"{context}{t}",
+                        "text": temp,
                         "label" : k["gold_label"]
                     })
-                    print(f'{context}{t}')
         return pd.DataFrame(temp_dict_list)
 
 
@@ -330,19 +333,19 @@ if __name__ == "__main__":
 
     #Split df into df[:.8], df[.8:.9], df[.9:]
     #Esentially 80%, 10%, 10%
-    df_train, df_val, df_test = np.split(df_inter, [int(.8*len(df_inter)), int(.9*len(df_inter))])
+    df_train, df_val, df_test = np.split(df_inter, [int(.7*len(df_inter)), int(.9*len(df_inter))])
     true_dataset = lambda x: Dataset(x, labels, tokenizer)
     df_train, df_val, df_test = true_dataset(df_train), true_dataset(df_val), true_dataset(df_test)
 
     #______-Classifier Creation, Training, and Evaluation-______#
     classifierModerl = BertClassifier()
-    tt = TrainAndEvaluate(classifierModerl, df_train, df_test, df_val, epochs=3)
+    tt = TrainAndEvaluate(classifierModerl, df_train, df_test, df_val, epochs=10)
     tt.train()
     tt.evaluate()
 
     tt.testCustomSentences("Hispanic people love beans and are all from mexico.", tokenizer)
-    tt.testCustomSentences("Woman are bad drivers.", tokenizer)
     tt.testCustomSentences("Woman are bad drivers", tokenizer)
+    tt.testCustomSentences("Woman are bad drivers but good housekeepers", tokenizer)
 
     #______-Save the trained model-______#
     tt.saveModel()

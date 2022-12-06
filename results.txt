@@ -1,148 +1,396 @@
 Epoch: 1 
 || Train Results ||
-				precision    recall  f1-score   support
+              precision    recall  f1-score   support
 
-  Stereotype       0.50      0.78      0.61      1698
-  Unreleated       0.49      0.21      0.30      1698
+  Stereotype       0.50      0.46      0.48      1486
+  Unreleated       0.50      0.53      0.51      1486
 
-    accuracy                           0.49      3396
-   macro avg       0.49      0.49      0.45      3396
-weighted avg       0.49      0.49      0.45      3396
+    accuracy                           0.50      2972
+   macro avg       0.50      0.50      0.50      2972
+weighted avg       0.50      0.50      0.50      2972
 
-                    
 || Validation Results ||
-				precision    recall  f1-score   support
+              precision    recall  f1-score   support
 
-  Stereotype       0.83      0.94      0.88       213
-  Unreleated       0.93      0.81      0.87       212
+  Stereotype       0.91      0.89      0.90       425
+  Unreleated       0.89      0.91      0.90       424
 
-    accuracy                           0.88       425
-   macro avg       0.88      0.88      0.87       425
-weighted avg       0.88      0.88      0.87       425
+    accuracy                           0.90       849
+   macro avg       0.90      0.90      0.90       849
+weighted avg       0.90      0.90      0.90       849
 
-Epoch: 2 
-                    || Train Results ||
-                                  precision    recall  f1-score   support
-
-  Stereotype       0.51      0.51      0.51      1698
-  Unreleated       0.51      0.50      0.51      1698
-
-    accuracy                           0.51      3396
-   macro avg       0.51      0.51      0.51      3396
-weighted avg       0.51      0.51      0.51      3396
-
-                    
-                    || Validation Results ||
-                                  precision    recall  f1-score   support
-
-  Stereotype       0.88      0.96      0.92       213
-  Unreleated       0.95      0.87      0.91       212
-
-    accuracy                           0.92       425
-   macro avg       0.92      0.92      0.92       425
-weighted avg       0.92      0.92      0.92       425
-
-                    Epoch: 3 
-                    || Train Results ||
-                                  precision    recall  f1-score   support
-
-  Stereotype       0.50      0.50      0.50      1698
-  Unreleated       0.50      0.50      0.50      1698
-
-    accuracy                           0.50      3396
-   macro avg       0.50      0.50      0.50      3396
-weighted avg       0.50      0.50      0.50      3396
-
-                    
-                    || Validation Results ||
-                                  precision    recall  f1-score   support
-
-  Stereotype       0.94      0.94      0.94       213
-  Unreleated       0.94      0.94      0.94       212
-
-    accuracy                           0.94       425
-   macro avg       0.94      0.94      0.94       425
-weighted avg       0.94      0.94      0.94       425
-
-                    
-                || Test Results ||
-                              precision    recall  f1-score   support
-
-  Stereotype       0.96      0.95      0.96       212
-  Unreleated       0.95      0.96      0.96       213
-
-    accuracy                           0.96       425
-   macro avg       0.96      0.96      0.96       425
-weighted avg       0.96      0.96      0.96       425
 Epoch: 1 
 || Train Results ||
               precision    recall  f1-score   support
 
-  Stereotype       0.51      0.59      0.55      1698
-  Unreleated       0.51      0.42      0.46      1698
+  Stereotype       0.49      0.49      0.49      1486
+  Unreleated       0.49      0.49      0.49      1486
 
-    accuracy                           0.51      3396
-   macro avg       0.51      0.51      0.50      3396
-weighted avg       0.51      0.51      0.50      3396
+    accuracy                           0.49      2972
+   macro avg       0.49      0.49      0.49      2972
+weighted avg       0.49      0.49      0.49      2972
 
 || Validation Results ||
               precision    recall  f1-score   support
 
-  Stereotype       0.87      0.92      0.89       213
-  Unreleated       0.91      0.86      0.89       212
+  Stereotype       0.53      0.55      0.54       425
+  Unreleated       0.53      0.52      0.52       424
 
-    accuracy                           0.89       425
-   macro avg       0.89      0.89      0.89       425
-weighted avg       0.89      0.89      0.89       425
+    accuracy                           0.53       849
+   macro avg       0.53      0.53      0.53       849
+weighted avg       0.53      0.53      0.53       849
 
 Epoch: 2 
 || Train Results ||
               precision    recall  f1-score   support
 
-  Stereotype       0.52      0.52      0.52      1698
-  Unreleated       0.52      0.52      0.52      1698
+  Stereotype       0.51      0.52      0.52      1486
+  Unreleated       0.51      0.50      0.51      1486
 
-    accuracy                           0.52      3396
-   macro avg       0.52      0.52      0.52      3396
-weighted avg       0.52      0.52      0.52      3396
+    accuracy                           0.51      2972
+   macro avg       0.51      0.51      0.51      2972
+weighted avg       0.51      0.51      0.51      2972
 
 || Validation Results ||
               precision    recall  f1-score   support
 
-  Stereotype       0.93      0.93      0.93       213
-  Unreleated       0.93      0.93      0.93       212
+  Stereotype       0.55      0.57      0.56       425
+  Unreleated       0.55      0.53      0.54       424
 
-    accuracy                           0.93       425
-   macro avg       0.93      0.93      0.93       425
-weighted avg       0.93      0.93      0.93       425
+    accuracy                           0.55       849
+   macro avg       0.55      0.55      0.55       849
+weighted avg       0.55      0.55      0.55       849
+
+Epoch: 1 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.49      0.29      0.36      1486
+  Unreleated       0.50      0.70      0.58      1486
+
+    accuracy                           0.49      2972
+   macro avg       0.49      0.49      0.47      2972
+weighted avg       0.49      0.49      0.47      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.62      0.43      0.51       425
+  Unreleated       0.56      0.74      0.64       424
+
+    accuracy                           0.58       849
+   macro avg       0.59      0.58      0.57       849
+weighted avg       0.59      0.58      0.57       849
+
+Epoch: 2 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.51      0.45      0.48      1486
+  Unreleated       0.51      0.57      0.54      1486
+
+    accuracy                           0.51      2972
+   macro avg       0.51      0.51      0.51      2972
+weighted avg       0.51      0.51      0.51      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.66      0.68      0.67       425
+  Unreleated       0.67      0.65      0.66       424
+
+    accuracy                           0.66       849
+   macro avg       0.66      0.66      0.66       849
+weighted avg       0.66      0.66      0.66       849
 
 Epoch: 3 
 || Train Results ||
               precision    recall  f1-score   support
 
-  Stereotype       0.49      0.49      0.49      1698
-  Unreleated       0.49      0.49      0.49      1698
+  Stereotype       0.50      0.49      0.50      1486
+  Unreleated       0.50      0.51      0.51      1486
 
-    accuracy                           0.49      3396
-   macro avg       0.49      0.49      0.49      3396
-weighted avg       0.49      0.49      0.49      3396
+    accuracy                           0.50      2972
+   macro avg       0.50      0.50      0.50      2972
+weighted avg       0.50      0.50      0.50      2972
 
 || Validation Results ||
               precision    recall  f1-score   support
 
-  Stereotype       0.93      0.95      0.94       213
-  Unreleated       0.95      0.93      0.94       212
+  Stereotype       0.72      0.68      0.70       425
+  Unreleated       0.70      0.74      0.72       424
 
-    accuracy                           0.94       425
-   macro avg       0.94      0.94      0.94       425
-weighted avg       0.94      0.94      0.94       425
+    accuracy                           0.71       849
+   macro avg       0.71      0.71      0.71       849
+weighted avg       0.71      0.71      0.71       849
+
+Epoch: 4 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.50      0.49      0.50      1486
+  Unreleated       0.50      0.52      0.51      1486
+
+    accuracy                           0.50      2972
+   macro avg       0.50      0.50      0.50      2972
+weighted avg       0.50      0.50      0.50      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.78      0.80      0.79       425
+  Unreleated       0.80      0.77      0.78       424
+
+    accuracy                           0.79       849
+   macro avg       0.79      0.79      0.79       849
+weighted avg       0.79      0.79      0.79       849
+
+Epoch: 5 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.51      0.49      0.50      1486
+  Unreleated       0.51      0.54      0.52      1486
+
+    accuracy                           0.51      2972
+   macro avg       0.51      0.51      0.51      2972
+weighted avg       0.51      0.51      0.51      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.84      0.80      0.82       425
+  Unreleated       0.80      0.84      0.82       424
+
+    accuracy                           0.82       849
+   macro avg       0.82      0.82      0.82       849
+weighted avg       0.82      0.82      0.82       849
 
 || Test Results ||
               precision    recall  f1-score   support
 
-  Stereotype       0.93      0.96      0.94       212
-  Unreleated       0.96      0.92      0.94       213
+  Stereotype       0.81      0.76      0.78       212
+  Unreleated       0.77      0.82      0.80       213
 
-    accuracy                           0.94       425
-   macro avg       0.94      0.94      0.94       425
-weighted avg       0.94      0.94      0.94       425
+    accuracy                           0.79       425
+   macro avg       0.79      0.79      0.79       425
+weighted avg       0.79      0.79      0.79       425
+Epoch: 1 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.50      0.92      0.65      1486
+  Unreleated       0.49      0.08      0.13      1486
+
+    accuracy                           0.50      2972
+   macro avg       0.50      0.50      0.39      2972
+weighted avg       0.50      0.50      0.39      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.51      0.91      0.65       425
+  Unreleated       0.56      0.12      0.20       424
+
+    accuracy                           0.51       849
+   macro avg       0.53      0.51      0.42       849
+weighted avg       0.53      0.51      0.42       849
+
+Epoch: 2 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.50      0.80      0.61      1486
+  Unreleated       0.49      0.19      0.28      1486
+
+    accuracy                           0.50      2972
+   macro avg       0.50      0.50      0.45      2972
+weighted avg       0.50      0.50      0.45      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.55      0.87      0.67       425
+  Unreleated       0.69      0.29      0.41       424
+
+    accuracy                           0.58       849
+   macro avg       0.62      0.58      0.54       849
+weighted avg       0.62      0.58      0.54       849
+
+Epoch: 3 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.50      0.70      0.58      1486
+  Unreleated       0.51      0.31      0.39      1486
+
+    accuracy                           0.50      2972
+   macro avg       0.50      0.50      0.49      2972
+weighted avg       0.50      0.50      0.49      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.67      0.80      0.73       425
+  Unreleated       0.75      0.60      0.67       424
+
+    accuracy                           0.70       849
+   macro avg       0.71      0.70      0.70       849
+weighted avg       0.71      0.70      0.70       849
+
+Epoch: 4 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.49      0.61      0.54      1486
+  Unreleated       0.49      0.38      0.43      1486
+
+    accuracy                           0.49      2972
+   macro avg       0.49      0.49      0.49      2972
+weighted avg       0.49      0.49      0.49      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.69      0.82      0.75       425
+  Unreleated       0.78      0.63      0.69       424
+
+    accuracy                           0.72       849
+   macro avg       0.73      0.72      0.72       849
+weighted avg       0.73      0.72      0.72       849
+
+Epoch: 5 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.50      0.58      0.53      1486
+  Unreleated       0.50      0.42      0.46      1486
+
+    accuracy                           0.50      2972
+   macro avg       0.50      0.50      0.50      2972
+weighted avg       0.50      0.50      0.50      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.77      0.85      0.81       425
+  Unreleated       0.83      0.75      0.79       424
+
+    accuracy                           0.80       849
+   macro avg       0.80      0.80      0.80       849
+weighted avg       0.80      0.80      0.80       849
+
+Epoch: 6 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.48      0.54      0.51      1486
+  Unreleated       0.47      0.41      0.44      1486
+
+    accuracy                           0.47      2972
+   macro avg       0.47      0.47      0.47      2972
+weighted avg       0.47      0.47      0.47      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.80      0.88      0.84       425
+  Unreleated       0.86      0.79      0.82       424
+
+    accuracy                           0.83       849
+   macro avg       0.83      0.83      0.83       849
+weighted avg       0.83      0.83      0.83       849
+
+Epoch: 7 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.51      0.56      0.53      1486
+  Unreleated       0.51      0.47      0.49      1486
+
+    accuracy                           0.51      2972
+   macro avg       0.51      0.51      0.51      2972
+weighted avg       0.51      0.51      0.51      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.85      0.88      0.87       425
+  Unreleated       0.87      0.85      0.86       424
+
+    accuracy                           0.86       849
+   macro avg       0.86      0.86      0.86       849
+weighted avg       0.86      0.86      0.86       849
+
+Epoch: 8 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.52      0.55      0.53      1486
+  Unreleated       0.52      0.49      0.50      1486
+
+    accuracy                           0.52      2972
+   macro avg       0.52      0.52      0.52      2972
+weighted avg       0.52      0.52      0.52      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.86      0.90      0.88       425
+  Unreleated       0.90      0.85      0.87       424
+
+    accuracy                           0.88       849
+   macro avg       0.88      0.88      0.88       849
+weighted avg       0.88      0.88      0.88       849
+
+Epoch: 9 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.50      0.52      0.51      1486
+  Unreleated       0.50      0.48      0.49      1486
+
+    accuracy                           0.50      2972
+   macro avg       0.50      0.50      0.50      2972
+weighted avg       0.50      0.50      0.50      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.90      0.91      0.91       425
+  Unreleated       0.91      0.90      0.90       424
+
+    accuracy                           0.91       849
+   macro avg       0.91      0.91      0.91       849
+weighted avg       0.91      0.91      0.91       849
+
+Epoch: 10 
+|| Train Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.52      0.53      0.53      1486
+  Unreleated       0.52      0.51      0.52      1486
+
+    accuracy                           0.52      2972
+   macro avg       0.52      0.52      0.52      2972
+weighted avg       0.52      0.52      0.52      2972
+
+|| Validation Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.90      0.91      0.90       425
+  Unreleated       0.91      0.90      0.90       424
+
+    accuracy                           0.90       849
+   macro avg       0.90      0.90      0.90       849
+weighted avg       0.90      0.90      0.90       849
+
+|| Test Results ||
+              precision    recall  f1-score   support
+
+  Stereotype       0.86      0.88      0.87       212
+  Unreleated       0.88      0.86      0.87       213
+
+    accuracy                           0.87       425
+   macro avg       0.87      0.87      0.87       425
+weighted avg       0.87      0.87      0.87       425
