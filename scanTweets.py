@@ -42,7 +42,7 @@ class ScanTweets(ModelHelper):
             catagory = catagory[0]
     
             i = catagory.index(max(catagory))
-            if (i == 0 and (catagory[0] - catagory[1]) > 3):
+            if (i == 0 and (catagory[0] - catagory[1]) >= .9):
                 #print(tweet)
                 s = tweetDF.loc[rIndex].to_list()
                 s.append(catagory[i])

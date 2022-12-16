@@ -19,8 +19,6 @@ class UseModel(ModelHelper):
     
 
 
-    #The data type input is the same so WHY IS IT NOT WORKING
-    #The output is just [nan, nan] wtf???
     def testScentence(self, scentence):
         self._set_device()
         tokinized_text = self._tokinize_text(self.tokenizer, scentence)

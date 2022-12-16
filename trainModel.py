@@ -9,8 +9,81 @@ from torch.optim import Adam
 from tqdm import tqdm
 from sklearn.metrics import classification_report
 import re
+import csv
 
-path = os.getcwd()
+cwd = os.getcwd()
+
+
+class CSVResults():
+    def __init__(self, csvName):
+        directory = f"{cwd}/Epoch_Results"
+        path = directory + f"/{csvName}.csv"
+        columns = ["Catagory", "Precision", "Recall", "F1-Score", "Accuracy", "Support", "Epoch"]
+        self.csvWriter = csv.writer(open(path, 'w'), delimiter=",")
+        self.csvWriter.writerow(columns)
+
+        self.percision = None
+        self.recall = None
+        self.F1Score = None
+
+    #True Predicted positive / True Predicted Positive + False Predicted Positive
+    def CalculatePercision(self, predictions, label_list, positive_label):
+        truePositives = 0
+        falsePositives = 0
+        for i in range(len(predictions)):
+            isPositive = predictions[i] == positive_label
+            isTruePositive = predictions[i] == label_list[i]
+            if (isPositive and isTruePositive): truePositives += 1
+            elif(isPositive): falsePositives += 1
+        
+        return (truePositives / (truePositives + falsePositives))
+
+    #True Predicted Positives / Total Actual Positives
+    def CalculateRecall(self, predictions, label_list, positive_label, actual_positives):
+        predicted_positives = 0
+        for i in range(len(predictions)):
+            isPostive = predictions[i] == positive_label
+            truePostive = predictions[i] == label_list[i]
+            if (isPostive and truePostive): predicted_positives +=1
+        
+        return (predicted_positives/actual_positives)
+
+    def CalculateF1Score(self, percision, recall):
+        return (2* ( (percision * recall) / (percision + recall) ))
+    
+
+    def CalculateScores_and_WriteCSV(self, predictions, labels, totalHits, epochNumber):
+        totalStereotype = labels.count(0)
+        totalUnrelated = labels.count(1)
+
+        average = lambda x, z: (x + z) / 2
+
+        stereotype_percision = self.CalculatePercision(predictions, labels, 0)
+        unrelated_percision = self.CalculatePercision(predictions, labels, 1)
+
+        stereotype_recall = self.CalculateRecall(predictions, labels, 0, totalStereotype)
+        unrelated_recall = self.CalculateRecall(predictions, labels, 1, totalUnrelated)
+
+        stereotype_F1 = self.CalculateF1Score(stereotype_percision, stereotype_recall)
+        unrelated_F1 = self.CalculateF1Score(unrelated_percision, unrelated_recall)
+
+        accuracy = totalHits / len(labels)
+
+        self.csvWriter.writerow(["Stereotype", stereotype_percision, stereotype_recall, stereotype_F1, "", totalStereotype, epochNumber])
+        self.csvWriter.writerow(["Unrelated", unrelated_percision, unrelated_recall, unrelated_F1, "", totalUnrelated, epochNumber])
+        self.csvWriter.writerow(["", "", "", "", accuracy, (totalUnrelated + totalStereotype), epochNumber])
+        self.csvWriter.writerow(["Average", (average(unrelated_percision, stereotype_percision)), (average(unrelated_recall, stereotype_recall)), (average(unrelated_F1, stereotype_F1)), "", (totalStereotype + totalUnrelated), epochNumber])
+
+
+        print(f"\
+Stereotypes |----| Percision: {stereotype_percision} -- Recall: {stereotype_recall} -- F1: {stereotype_F1} \n \
+Unrelated   |----| Percision: {unrelated_percision} -- Recall: {unrelated_recall} -- F1: {unrelated_F1} \n \
+Average     |----| Precision:{average(stereotype_percision, unrelated_percision)} -- Recall: {average(stereotype_recall, unrelated_recall)} -- F1: {average(stereotype_F1, unrelated_F1)} \n \
+Accuracy: {accuracy} \n \n"
+        )
+
+
+        
 
 #<-- Helps with tasks that need to be done universially to use this model -->
 class ModelHelper():
@@ -78,7 +151,7 @@ class BertClassifierLSTM(nn.Module):
         super(BertClassifierLSTM, self).__init__()
 
         #Bert model for tokinization
-        self.bert = BertModel.from_pretrained(f'{path}/bert-base-uncased')
+        self.bert = BertModel.from_pretrained(f'{cwd}/bert-base-uncased')
 
         #
         self.dropout = nn.Dropout(droupout)
@@ -104,7 +177,7 @@ class BertClassifier(nn.Module):
         super(BertClassifier, self).__init__()
 
         #bert model
-        self.bert = BertModel.from_pretrained(f'{path}/bert-base-uncased')
+        self.bert = BertModel.from_pretrained(f'{cwd}/bert-base-uncased')
 
         #dropout probability set
         self.dropout = nn.Dropout(dropout)
@@ -145,7 +218,8 @@ class TrainAndEvaluate(ModelHelper):
         self.device = None
 
     def class_report(self, data, predictions):
-        return classification_report(data.classes(), predictions, target_names=['Stereotype', 'Unreleated'], labels=[0, 1])
+        a = lambda x: classification_report(data.classes(), predictions, target_names=['Stereotype', 'Unreleated'], labels=[0, 1], output_dict=x)
+        return a(False), a(True)
     
     def extenstion(self, output, list):
         list.extend(output.argmax(dim=1).tolist())
@@ -167,11 +241,15 @@ class TrainAndEvaluate(ModelHelper):
         self.model = self.model.to(self.device)
         lossFunction = lossFunction.to(self.device)
 
+        trainResultCalculator = CSVResults(f"Training")
+        validationResultCalculator = CSVResults(f"Validation")
+
         for epoch_num in range(self.epochs):
                 total_acc_train = 0
                 total_loss_train = 0
                 predictions = []
                 validation_predictions = []
+
 
                 #tdqm makes a progress bar for every item itterated
                 for train_input, train_label in tqdm(train_dataloader):
@@ -224,11 +302,14 @@ class TrainAndEvaluate(ModelHelper):
                         acc = (output.argmax(dim=1) == val_label).sum().item()
                         total_acc_val += acc
 
-                train_results = self.class_report(self.train_data, predictions)
-                val_results = self.class_report(self.val_data, validation_predictions)
+                train_results, train_dict = self.class_report(self.train_data, predictions)
+                val_results, val_dict = self.class_report(self.val_data, validation_predictions)
 
-                with open(f'{path}/results.txt', 'a') as f:
-                    f.write(f'''Epoch: {epoch_num + 1} \n|| Train Results ||\n{train_results}\n|| Validation Results ||\n{val_results}\n''')
+
+                trainResultCalculator.CalculateScores_and_WriteCSV(predictions, self.train_data.classes(), total_acc_train, (epoch_num + 1))
+                validationResultCalculator.CalculateScores_and_WriteCSV(validation_predictions, self.val_data.classes(), total_acc_val, (epoch_num + 1))
+                # with open(f'{cwd}/results.txt', 'a') as f:
+                #     f.write(f'''Epoch: {epoch_num + 1} \n|| Train Results ||\n{train_results}\n|| Validation Results ||\n{val_results}\n''')
                 
                 print(train_results)
                 print(val_results)
@@ -259,11 +340,14 @@ class TrainAndEvaluate(ModelHelper):
                 acc = (output.argmax(dim=1) == test_label).sum().item()
                 total_acc_test += acc
         
-        test_results = classification_report(self.test_data.classes(), test_predictions, target_names=['Stereotype', 'Unreleated'], labels=[0, 1])
-        with open(f'{path}/results.txt', 'a') as f:
-            f.write(f'''|| Test Results ||\n{test_results}''')
+        #test_results, test_dict = classification_report(self.test_data.classes(), test_predictions, target_names=['Stereotype', 'Unreleated'], labels=[0, 1])
+        
+        resultCalculator = CSVResults(f"Test_Results")
+        resultCalculator.CalculateScores_and_WriteCSV(test_predictions, self.test_data.classes(), total_acc_test, "")
+        # with open(f'{cwd}/results.txt', 'a') as f:
+        #     f.write(f'''|| Test Results ||\n{test_results}''')
 
-        print(test_results)
+        #print(test_results)
         print(f'Test Accuracy: {total_acc_test / len(self.test_data): .3f}')
     
     def testCustomSentences(self, scentence, tokinizer):
@@ -283,8 +367,8 @@ class TrainAndEvaluate(ModelHelper):
             print("Stereotype")
     
     def saveModel(self):
-        save_path = f'{path}/stereotype_detection_model.pth'
-        pickle_path = f'{path}/pickledModel.pickle'
+        save_path = f'{cwd}/stereotype_detection_model.pth'
+        pickle_path = f'{cwd}/pickledModel.pickle'
         torch.save(self.model.state_dict(), save_path)
         torch.save(self.model, pickle_path)
 
@@ -293,7 +377,7 @@ class TrainAndEvaluate(ModelHelper):
 
 if __name__ == "__main__":
     #______-Functions-______#
-    dataset_path = path +  "/stereotypes.json"
+    dataset_path = cwd +  "/stereotypes.json"
 
     #open up the json file and make a data frame out of it
     #reformat the data into something more palatable, decomposing the sentences list
@@ -324,7 +408,7 @@ if __name__ == "__main__":
         'stereotype':0,
         'unrelated':1
     }
-    tokenizer = BertTokenizer.from_pretrained(f'{path}/bert-base-uncased')
+    tokenizer = BertTokenizer.from_pretrained(f'{cwd}/bert-base-uncased')
 
     #Make data frames
     df_inter = parse_And_Make_DataFrame("intersentence")
@@ -333,13 +417,13 @@ if __name__ == "__main__":
 
     #Split df into df[:.8], df[.8:.9], df[.9:]
     #Esentially 80%, 10%, 10%
-    df_train, df_val, df_test = np.split(df_inter, [int(.7*len(df_inter)), int(.9*len(df_inter))])
+    df_train, df_val, df_test = np.split(df_inter, [int(.8*len(df_inter)), int(.9*len(df_inter))])
     true_dataset = lambda x: Dataset(x, labels, tokenizer)
     df_train, df_val, df_test = true_dataset(df_train), true_dataset(df_val), true_dataset(df_test)
 
     #______-Classifier Creation, Training, and Evaluation-______#
     classifierModerl = BertClassifier()
-    tt = TrainAndEvaluate(classifierModerl, df_train, df_test, df_val, epochs=10)
+    tt = TrainAndEvaluate(classifierModerl, df_train, df_test, df_val, epochs=8)
     tt.train()
     tt.evaluate()
 
